@@ -1,0 +1,325 @@
+\documentclass[UTF8]{ctexart}
+\usepackage{geometry}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{graphicx}
+\usepackage{amsmath}
+\usepackage{float}
+\usepackage{hyperref}
+\usepackage{tcolorbox}
+
+\geometry{a4paper, left=2.5cm, right=2.5cm, top=2.5cm, bottom=2.5cm}
+
+\title{\textbf{A Simple Calculator}}
+\author{
+    Student ID: 12312710 \\
+    Name: 苍熠/Brighton \\
+    Course: CS219: Advanced Programming \\
+    Date: \today
+}
+\date{}
+
+\lstset{
+    basicstyle=\ttfamily\small,
+    keywordstyle=\color{blue},
+    commentstyle=\color{gray},
+    stringstyle=\color{red},
+    frame=single,
+    breaklines=true,
+    numbers=left,
+    numberstyle=\tiny\color{gray},
+    language=C
+}
+
+\begin{document}
+
+\maketitle
+\tableofcontents
+\newpage
+
+\section{前言}
+你知道的，于C++的5个Project一直是南科大大佬们秀技的修罗场。在GitHub上看几位学长的report，说实话读完之后冥冥中产生了一种敬畏感。但转机恰巧在这个学期出现了，“本来二十几天前就该写完的Project，硬是让DeepSeek搞成样子”。显然，这一次project的侧重方向悄然的发生了某些改变，我们如何使用AI辅助coding成为了我们必须掌握的一种技能，而这次project会不可避免的考查我们这个部分的能力。因此，本project在完成基本要求和部分进阶要求的前提下，融入了大量的科学使用AI工具能力的内容。
+
+\section{功能展示}
+
+\subsection{运行环境}
+本程序是由 C 语言编写。在 Linux (Ubuntu / WSL) 系统中，使用 gcc 编译器进行了编译和运行。
+\begin{verbatim}
+$ gcc main.c -o main
+$ ./main
+\end{verbatim}
+
+\subsection{交互式输入输出}
+程序支持交互式命令行 (REPL) 模式，用户可以直接输入表达式，程序会即时输出结果。支持 `quit` 或 `exit` 命令退出。
+\begin{verbatim}
+> 1 + 1
+1 + 1 = 2
+> 100 / 3
+100 / 3 = 33.333333333333333333
+\end{verbatim}
+
+\subsection{支持多种数字输入形式}
+输入解析器非常鲁棒，支持以下格式：
+\begin{itemize}
+    \item 普通整数：`123`
+    \item 小数：`123.456`
+    \item 科学计数法：`1e10`, `1.23e-5`, `1E+100` (甚至支持极大指数如 `1e100`)
+    \item 带有冗余空格的输入：`  1   +   2  `
+\end{itemize}
+
+\subsection{对无限精度的数字进行无精度损耗的计算}
+本计算器核心采用动态数组实现的 `NumericVar` 结构，理论上精度仅受限于内存大小。无论是 `1e100 * 1e100` 产生的大数，还是高精度除法，都能保持无损或用户指定精度的计算。
+
+\subsection{支持部分函数调用}
+内置了开根、乘方函数，支持直接在计算中使用。调用方式为 `sqrt(x)`, `x^n`。注意 `sqrt` 默认保留 18 位小数。
+\begin{tcolorbox}[colback=gray!10, colframe=gray!50, arc=5pt]
+\begin{verbatim}
+> sqrt(10)
+sqrt(10) = 3.162277660168379332
+> 2 ^ 10
+2 ^ 10 = 1024
+> 3 ^ 100 
+3 ^ 100 = 515377520732011331036461129765621272702107522001
+\end{verbatim}
+\end{tcolorbox}
+
+\subsection{对无限精度的数字进行任意精度调整和计算}
+对于除法和开方运算，由于可能产生无限循环小数，计算器采用了**固定高精度策略**。目前默认保留小数点后 **18位** 有效数字，这足以满足绝大多数科学计算需求。对于加减乘法，则保持**完全精度**，不会发生溢出或精度丢失。
+\begin{tcolorbox}[colback=gray!10, colframe=gray!50, arc=5pt]
+\begin{verbatim}
+> 1 / 3
+1 / 3 = 0.333333333333333333
+> sqrt(2)
+sqrt(2) = 1.414213562373095048
+> 123456789123456789 * 123456789123456789
+15241578780673678515622620750190521
+\end{verbatim}
+\end{tcolorbox}
+
+\subsection{错误输入识别}
+对于非法输入（如除以零、格式错误的数字、不支持的运算符），程序会捕捉并打印友好的错误信息，而不会导致程序崩溃。
+\begin{verbatim}
+> 1 / 0
+Error: 除数不能为零。
+> 1 + abc
+Error: 输入无法解释为数字。
+\end{verbatim}
+
+\section{功能实现}
+
+\subsection{高精度}
+\subsubsection{分析}
+为了支持任意精度的浮点运算，仅仅使用 C 语言内置的 `double` 或 `long double` 是不够的。我们需要自己管理数字的每一位。
+
+\subsubsection{数据存储方式}
+采用了类似 Python `long` 对象的实现方式，使用一个数组存储数字的“段”（digits），每一段代表 1000 进制（BASE=1000）的一位。
+\begin{lstlisting}
+typedef struct { 
+    unsigned int *digits; // 动态数组，存储 BASE 进制的位
+    int ndigits;          // 数组长度
+    int weight;           // 权值：小数点相对于 digits[0] 的位置
+    int sign;             // 符号：1 正, -1 负, 0 零
+    int scale;            // 显示精度
+} NumericVar;
+\end{lstlisting}
+
+一个封装的数字 `NumericVar` 共有以下关键信息：存储每一位的动态数组 \texttt{digits[]}，一个整数变量存储数组的长度 \texttt{ndigits}，一个整数变量存储相对于小数点的权重 \texttt{weight}，以及符号标志 \texttt{sign}。为了计算方便，我们把最高有效位 (MSB) 放在了数组的第一位 (\texttt{digits[0]})。
+
+我们的数值实质上可以表示为：
+\[
+\text{Value} = \text{sign} \times \left( \sum_{i=0}^{\text{ndigits}-1} \text{digits}[i] \times \text{BASE}^{\text{weight}-i} \right)
+\]
+其中 \(\text{BASE} = 1000\)，\(\text{digits}[i] \in \{0, 1, \dots, \text{BASE}-1\}\)。
+这种设计也是对于浮点数 `Sign-Significand-Exponent` 模型的变体。
+
+\subsection{加减运算}
+\subsubsection{原理}
+加减法的核心在于**对齐小数点**。由于我们使用 `weight` 来表示位权，两个数相加前，必须先把它们的指数（weight）对齐，通常是将精度较低的数对齐到精度较高的数（即补零）。
+\subsubsection{实现}
+\begin{lstlisting}[language=C, title=Add(A, B)]
+// 伪代码逻辑: Add(A, B)
+1. 如果 A.符号 != B.符号:
+    // 异号相加转为减法
+    如果 |A| > |B| 返回 SubAbs(A, B)，符号为 A.符号
+    否则 返回 SubAbs(B, A)，符号为 B.符号
+
+2. // 同号相加 (AddAbs)
+   初始化 R，分配足够空间
+   设 R.权重 = max(A.权重, B.权重) + 1  // 预留进位空间
+   进位 carry = 0
+
+3. // 从低位向高位遍历
+   对于 i 从 0 到 (max_weight - min_weight):
+       val_a = A 在当前权重位的数值 (若无则为0)
+       val_b = B 在当前权重位的数值 (若无则为0)
+       
+       sum = val_a + val_b + carry
+       
+       R.digits[i] = sum % BASE  // 当前位
+       carry = sum / BASE        // 计算进位
+
+4. 去除 R 的前导零和无效零
+5. 返回 R
+\end{lstlisting}
+
+\begin{lstlisting}[language=C, title=SubAbs(A, B)]
+// 伪代码逻辑: SubAbs(A, B) (前置条件 |A| >= |B|)
+1. 初始化 R，R.权重 = A.权重
+   借位 borrow = 0
+
+2. // 从低位向高位遍历
+   对于 i 从 0 到 R.长度:
+       val_a = A 在当前权重位的数值
+       val_b = B 在当前权重位的数值
+       
+       diff = val_a - val_b - borrow
+       
+       如果 diff < 0:
+           diff = diff + BASE  // 向高位借位
+           borrow = 1
+       否则:
+           borrow = 0
+           
+       R.digits[i] = diff
+
+3. 去除 R 的前导零，返回 R
+\end{lstlisting}
+
+
+\subsection{乘法算法}
+\subsubsection{原理}
+实现了经典的长乘法（Long Multiplication），时间复杂度为 $O(N \times M)$。虽然不是最快的 Karatsuba 或 FFT，但对于常规计算器应用足够高效且易于实现。
+\subsubsection{实现}
+\begin{lstlisting}[language=C, title=Multiply(A, B)]
+// 伪代码逻辑: Multiply(A, B)
+1. 初始化 R，分配空间 = A.长度 + B.长度
+   R.digits 全部置零
+   R.权重 = A.权重 + B.权重 + 1
+
+2. // 长乘法 (Long Multiplication)
+   对于 i 从 0 到 A.长度 - 1:
+       如果 A.digits[i] == 0: continue
+       
+       进位 carry = 0
+       对于 j 从 0 到 B.长度 - 1:
+           // 计算在结果数组中的位置
+           k = i + j + 1
+           
+           // 累加乘积：当前位 = 旧值 + (A位 * B位) + 进位
+           sum = R.digits[k] + (A.digits[i] * B.digits[j]) + carry
+           
+           R.digits[k] = sum % BASE
+           carry = sum / BASE
+       
+       // 处理当前行剩余的进位
+       R.digits[i] += carry
+
+3. R.符号 = A.符号 * B.符号
+4. 去除 R 的前导零，返回 R
+\end{lstlisting}
+特别注意了 `1e100` 这种科学计数法的大数乘法，通过调整 `weight` 而不是移动内存来优化性能。
+
+\subsection{除法算法}
+\subsubsection{原理}
+实现了 Knuth 的 **Algorithm D** (The Art of Computer Programming, Vol 2)，这是一种能够处理多精度整数除法的标准算法。
+\subsubsection{代码实现}
+\begin{lstlisting}[language=C, title=Divide(P / Q)]
+// 伪代码逻辑: Divide(A, B) (Knuth Algorithm D)
+1. 归一化: 确保 B 的最高位 >= BASE/2 (提高估商精度)
+   Q.权重 = A.权重 - B.权重
+   dividend = A (作为余数缓冲区)
+
+2. // 主循环: 从高位向低位试商
+   对于 shift 从 Q.权重 递减到 0:
+       // 估算商 digit (q_hat)
+       // 使用 dividend 的最高2位 (u0, u1) 和 B 的最高1位 (v1)
+       q_hat = (u0 * BASE + u1) / v1
+       如果 q_hat >= BASE: q_hat = BASE - 1
+       
+       // 修正 q_hat：如果 (B * q_hat) > 当前对应的 dividend 片段
+       当 (B * q_hat) > current_dividend_window:
+           q_hat = q_hat - 1
+       
+       // 记录商
+       Q.digits[对应下标] = q_hat
+       
+       // 乘减操作：更新 dividend (余数)
+       dividend = dividend - (B * q_hat * BASE^shift)
+
+3. 返回 Q, dividend (此时即为 Rem)
+\end{lstlisting}
+过程包含：归一化、估商、修正、去归一化。
+
+\subsection{开方算法}
+\subsubsection{原理}
+采用 **以整数为基础的牛顿迭代法 (Newton-Raphson Method)**。
+迭代公式：
+$$ x_{n+1} = \frac{1}{2} (x_n + \frac{a}{x_n}) $$
+为了处理小数，先将数字放大 $10^{2k}$ 倍变成整数开方，最后再缩小。
+
+\begin{lstlisting}[language=C, title=Sqrt(N)]
+// 伪代码逻辑: Sqrt(N, scale)
+1. // 放大转换
+   M = N * 10^(2 * scale)
+   
+2. // 初始猜测 X_0
+   根据 M 的十进制位数估算，X_0 = 10^(digits(M) / 2)
+
+3. // 牛顿迭代循环
+   重复直到收敛 (X_new >= X_old):
+       X_new = (X_old + M / X_old) / 2
+       更新 X_old = X_new
+
+4. // 结果修正 (确保是 floor(sqrt(M)))
+   如果 (X+1)^2 <= M: X = X + 1
+   如果 X^2 > M: X = X - 1
+
+5. // 缩小还原
+   结果 = X * 10^(-scale)
+   返回 结果
+\end{lstlisting}
+牛顿法具有二次收敛速度，对于高精度计算非常有效。
+
+\subsection{指数计算}
+\begin{lstlisting}[language=C, title=Power(A, B)]
+// 伪代码逻辑: Power(Base, Exp)
+1. R = 1
+2. 循环 i 从 1 到 Exp:
+       R = Multiply(R, Base) // 调用长乘法
+3. 返回 R
+\end{lstlisting}
+（注：当前实现为线性循环，未来可优化为 $O(\log N)$ 的快速幂算法）。
+
+\section{我是怎么使用 AI 的}
+
+\subsection{引言}
+在本项目中，GitHub Copilot 扮演了结对编程伙伴的角色。
+
+\subsection{Copilot 也是神}
+\subsubsection{自动补全}
+在编写 `NumericVar` 结构体和基础的内存管理函数（如 `alloc_var`）时，Copilot 能够根据上下文极其准确地补全代码，几乎不需要修改。
+
+\subsubsection{Fix Bug}
+在测试阶段，我发现 `1e100 * 1e100` 的结果不正确（算出了 100）。我直接将问题描述给 Copilot Agent，它迅速定位到了 `mul_var_pow10_inplace` 函数中对于 `digits` 数组移动逻辑的冗余和错误，并给出了精准的修复方案（只修改 weight，不移动内存）。
+
+\subsubsection{Test Case 生成}
+为了验证计算器的鲁棒性，我让 Copilot 生成了一个 `run_500_tests.py` 脚本。这个脚本利用 Python 的 `decimal` 模块作为“标准答案”，随机生成了 500 组涵盖整数、小数、科学计数法、边缘情况（如除以零）的测试用例，极大地提升了测试效率。
+
+\section{不足之处}
+\begin{itemize}
+    \item **乘方功能限制**：目前 `^` 运算符仅支持整数指数，不支持浮点数指数（如 `2^0.5`）。
+    \item **函数库不够丰富**：尚未实现 `sin`, `cos`, `log` 等三角函数和对数函数。
+    \item **性能优化**：对于超大规模数字（如几万位）的乘法，O(N^2) 的算法由于没有实现 FFT 会变慢。
+\end{itemize}
+
+\section{结语}
+通过本项目，我不仅深入理解了高精度运算的底层原理（位权管理、进位处理、数值分析算法），更学会了如何高效地与 AI 协作。从代码生成到 Bug 修复，再到自动化测试体系的构建，AI 工具极大地提升了工程效率，让我能将更多精力集中在核心算法逻辑的设计上。
+
+\begin{thebibliography}{99}
+    \bibitem{knuth} Knuth, D. E. (1998). \textit{The Art of Computer Programming, Volume 2: Seminumerical Algorithms} (3rd ed.). Addison-Wesley.
+    \bibitem{newton} Ypma, T. J. (1995). Historical development of the Newton-Raphson method. \textit{SIAM Review}, 37(4), 531-551.
+    \bibitem{postgres} The PostgreSQL Global Development Group. (n.d.). PostgreSQL Source Code (numeric.c). Retrieved from https://github.com/postgres/postgres
+    \bibitem{copilot} GitHub. (n.d.). GitHub Copilot - Your AI pair programmer. Retrieved from https://github.com/features/copilot
+\end{thebibliography}
+
+\end{document}
