@@ -1,0 +1,28 @@
+# Binaries / build artifacts
+*.o
+*.out
+a.out
+main
+*.exe
+
+# OpenBLAS / OpenCV vendored source (too large, available upstream)
+project3/OpenBLAS/
+opencv/
+build_*/
+build_release_*/
+build_ubsan_*/
+
+# LaTeX aux
+*.aux
+*.log
+*.toc
+*.out
+*.synctex.gz
+*.fls
+*.fdb_latexmk
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
