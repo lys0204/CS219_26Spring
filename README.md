@@ -1,36 +1,29 @@
-# SUSTech CS219 (Advanced Programming) Projects
+# SUSTech CS219(Advanced Programming 
 
-> 🌐 中文（默认） · [English](./README_en.md)
+> 🌐 中文（默认）
 
-## 📚 简介
+##  简介
 
-本仓库收录了南方科技大学 **CS219: Advanced Programming**（高级程序设计）2026 春季学期的全部四个 Project 的源码与报告。
+本仓库收录了南方科技大学 CS219 春季学期的全部四个 Project 的源码与报告。
 
 - **学期**：2026 Spring
-- **授课教师**：Prof. Shiqi Yu（于仕琪）
-- **作者**：李语尚（Student ID: 12412308）
-- **仓库内容**：每个 Project 的完整源代码、LaTeX 报告（`.tex`）与编译后的 PDF 报告、相关测试与性能图。
-
-> 📌 自 2025 Spring 起，原课程编号 **CS205** 正式更名为 **CS219**，课程内容与要求一脉相承。本仓库记录的即更名后的首届 CS219 四次大作业。
+- **授课教师**：Prof. Shiqi Yu
+- **作者**：李语尚12412308
 
 ### Projects
 
-| #   | 名称                                       | 简介                                                                   | 报告语言 | 大约用时 |
-| --- | ------------------------------------------ | ---------------------------------------------------------------------- | -------- | -------- |
-| 1   | [A Simple Calculator](./project1)          | 用 C 语言实现高精度计算器：千进制压位存储 + Knuth Algorithm D + 牛顿开方 | 中文     | ~40 h    |
-| 2   | [Dot Product of Two Vectors](./project2)   | C 与 Java 向量点积性能横评，剖析 JIT / SIMD / 内存墙                    | 中文     | ~20 h    |
-| 3   | [Matrix Multiplication](./project3)        | 手写 AVX2 + FMA + OpenMP 分块矩阵乘，与 OpenBLAS 对标                   | 源码     | ~15 h    |
-| 4   | [Contributing to OpenCV](./project4)       | 向 OpenCV 提交真实 bugfix：修复绘图模块 signed left-shift UB           | 中文     | ~15 h    |
-
-<img src="https://api.visitorbadge.io/api/visitors?path=https%3A%2F%2Fgithub.com%2Flys0204%2FCS219_26Spring&label=visitors&countColor=%2337d67a" alt="visitors"/>
+| #    | 名称                                     | 简介                                                         | 大约用时 |
+| ---- | ---------------------------------------- | ------------------------------------------------------------ | -------- |
+| 1    | [A Simple Calculator](./project1)        | 用 C 语言实现高精度计算器：千进制压位存储 + Knuth Algorithm D + 牛顿开方 | ~40 h    |
+| 2    | [Dot Product of Two Vectors](./project2) | C 与 Java 向量点积性能横评，剖析 JIT / SIMD / 内存墙         | ~20 h    |
+| 3    | [Matrix Multiplication](./project3)      | 手写 AVX2 + FMA + OpenMP 分块矩阵乘，与 OpenBLAS 对标        | ~15 h    |
+| 4    | [Contributing to OpenCV](./project4)     | 向 OpenCV 提交真实 bugfix：修复绘图模块 signed left-shift UB | ~15 h    |
 
 ---
 
-## 💻 四个 Project 详解
+##  四个 Project 详解
 
 ### Project 1 · A Simple Calculator（高精度计算器）
-
-📁 `project1/`：`calculator.c`（核心算法库）、`main.c`（REPL 交互前端）、`report.tex`、`run_500_tests.py`、`test_calculator_comprehensive.py`
 
 用纯 C 实现的**任意精度**计算器。核心数据结构 `NumericVar` 借鉴 CPython 长整型与 PostgreSQL `numeric.c`，采用 **BASE=1000 千进制压位**存储，理论上精度仅受内存限制。
 
@@ -40,22 +33,9 @@
 - **乘方**：`^` 运算符（整数指数）。
 - **鲁棒性**：除零、非法输入均有友好报错，500 组随机用例以 Python `decimal` 为标准答案交叉验证。
 
-> 报告中详细记录了与 GitHub Copilot 结对编程的过程：自动补全、Bug 定位（`1e100 * 1e100` 算成 100 的根因是 `mul_var_pow10_inplace` 错误移动内存而非只改 `weight`）、自动测试用例生成。
-
-```bash
-$ gcc main.c -o main
-$ ./main
-> 3 ^ 100
-3 ^ 100 = 515377520732011331036461129765621272702107522001
-> sqrt(2)
-sqrt(2) = 1.414213562373095048
-```
-
 ---
 
 ### Project 2 · Dot Product of Two Vectors（C vs Java 性能剖析）
-
-📁 `project2/`：`dotproduct.c`、` Dotproduct.java`、`report.tex` / `report.pdf`、5 张性能对比图
 
 表面是比较 C 与 Java 计算向量点积 $\sum a_i b_i$ 的速度，实则是**对现代计算机体系结构、编译器优化与软硬件协同的一场深度剖析**。
 
@@ -98,8 +78,6 @@ sqrt(2) = 1.414213562373095048
 - 大规模走 `collapse(2) + dynamic` 调度 + 三层分块（i/j/k），提升缓存命中。
 - 用 PCG32 生成随机矩阵数据，`CLOCK_MONOTONIC` 精确计时。
 
-> 本 Project 以源码 + 注释为主，未单独撰写正式报告；实现思路详见 `matmul.c` 中的中文注释。
-
 ---
 
 ### Project 4 · Contributing to OpenCV（真实开源贡献）
@@ -136,33 +114,16 @@ static inline int64 ScaleToFixedPoint(int64 v, int shift) {
 
 > **Fork**：https://github.com/lys0204/opencv · **Branch**：`project4_qdB3ar` · **Commit**：`434bb82a8878`
 
----
 
-## 🛠️ 关于 AI 工具的使用
 
-四个 Project 横跨一个学期，也是我逐步调整与 AI 协作方式的记录：
 
-- **Project 1**：大量依赖 GitHub Copilot（读源码、写代码、debug、生成测试）。报告中坦承"在 AI 的带领下勉勉强强完成任务"，并期望后续"我"的地位越来越强。
-- **Project 2**：AI 主要作为"讲解员"——结论由 AI 告诉我后，我去查证、理解、再写进报告。如报告所言：*"Project-based learning is essential to make you a real programmer."*
-- **Project 3**：手写 SIMD 内联汇编级代码，AI 辅助查阅 intrinsics 与分块策略，核心决策自主完成。
-- **Project 4**：AI（CodeWhale / DeepSeek V4）更像"结对编程的资深工程师"——分析大型代码库、推演修复方案、编写 benchmark。真正的方案选择与提交决策由自己做出。
-
-从"写代码的人"向"软件工程师"逐步迈进。
-
----
-
-## 📝 关于报告
-
-报告均使用 LaTeX（`ctexart` / `article` + `ctex`）撰写，推荐在 [Overleaf](https://www.overleaf.com) 上编译，本地可用 `xelatex`。每个 Project 目录下同时提供 `.tex` 源码与编译后的 `.pdf`。
-
-> 建议写报告时：① 用 LaTeX 而非 Word，排版质量直接影响评审印象；② 先理解每个 Project 背后老师想考查的能力点，再动笔；③ 写出属于你自己的思考与踩坑过程，避免千篇一律。
 
 ---
 
 ## 🔗 References
 
 - [Shiqi Yu / CPP — 官方课程仓库](https://github.com/ShiqiYu/CPP)
-- [BrightonXX / SUSTech-CPP-Project — 2025 Spring 学长项目（本仓库 README 风格参考来源）](https://github.com/BrightonXX/SUSTech-CPP-Project)
+- [BrightonXX / SUSTech-CPP-Project](https://github.com/BrightonXX/SUSTech-CPP-Project)
 - [HaibinLai / CS205-CPP-Programing-Project — 2024 Spring](https://github.com/HaibinLai/CS205-CPP-Programing-Project)
 - [Maystern / SUSTech_CS205_Cpp_Projects](https://github.com/Maystern/SUSTech_CS205_Cpp_Projects)
 - [YanWQ-monad / SUSTech_CS205_Projects — 2022 Fall](https://github.com/YanWQ-monad/SUSTech_CS205_Projects)
